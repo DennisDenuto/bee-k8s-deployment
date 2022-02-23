@@ -1,0 +1,229 @@
+#@data/values-schema
+---
+
+image:
+  repository: ethersphere/bee
+  tag: 1.4.3
+  pullPolicy: IfNotPresent
+
+#@schema/nullable
+imagePullSecrets: [""]
+nameOverride: ""
+fullnameOverride: ""
+
+#@schema/nullable
+serviceAccount:
+  #! Specifies whether a service account should be created
+  create: false
+  #! Name of the service account to use
+  #! if not set and create is true, a name is generated using the fullname template
+  name: default-service-account
+
+#! StatefulSet's ordering guarantees: OrderedReady or Parallel
+#! OrderedReady - launches or terminates all pods in ordered way
+#! Parallel - launches or terminates all pods in parallel
+podManagementPolicy: OrderedReady
+
+#! Bee process inside container is run with gid/uid 999
+#! fsGroup=999 enables mounting external volumes with appropriate permissions
+podSecurityContext:
+  fsGroup: 999
+
+#@schema/nullable
+securityContext: {}
+  #!capabilities:
+  #!  drop:
+  #!  - ALL
+  #!readOnlyRootFilesystem: true
+#!runAsNonRoot: true
+#!runAsUser: 1000
+
+#! Choose profile for testing bee with real life network scenarios (delays and packet drops)
+#! More info here https://github.com/ethersphere/bee-netem/blob/master/README.md
+#!netemCmd: "wifi"
+
+service:
+  type: ClusterIP
+  port: 80
+
+singlePodSts:
+  enabled: false
+  labelFilter: queen-bee
+
+#! By default and for convenience, for NodePort (p2p service)
+#! the Kubernetes control plane will allocate a port from a range (default: 30000-32767)
+#! You can enable and specify start value and NodePort will be $nodePortStart + $ordinal
+#! If wanted port if used by some other service deploy will fail
+p2pFixedPort:
+  enabled: false
+  nodePortStart: 31000
+
+#! If enabled, creates ingress for HTTP api
+#! Creates one ingress per pod and additionally one common ingress for all pods
+#! Total number of created ingress objects is: replicaCount + 1
+#! Hostname for 'per pod ingresses' is: <chart fullname>-<i>, or <chart fullname>-<i>.<domain> if domain is specified
+#! Hostname for 'common ingress' is: <chart fullname>, or <chart fullname>.<domain> if domain is specified
+#! tls.secretName won't be specified if tlsSecret is "", tls must be set to true
+ingress:
+  enabled: false
+  #! Used if cluster version is >= 1.19-0
+  pathType: ImplementationSpecific
+  #!ingressClassName: ingress-nginx
+  annotations: {}
+  #!kubernetes.io/ingress.class: nginx
+  #!kubernetes.io/tls-acme: "true"
+  hosts:
+    - domain: ""
+      paths: [ "" ]
+      tlsSecret: ""
+  tls: false
+
+#! If enabled and beeConfig.debug_api_enable is enabled, creates ingress for debug api
+#! Creates one ingress per pod
+#! Total number of created ingress objects is: replicaCount
+#! Hostname for 'per pod ingresses' is: <chart fullname>-debug-<i>, or <chart fullname>-debug-<i>.<domain> if domain is specified
+#! tls.secretName won't be specified if tlsSecret is "", tls must be set to true
+ingressDebug:
+  enabled: false
+  #! Used if cluster version is >= 1.19-0
+  pathType: ImplementationSpecific
+  #!ingressClassName: ingress-nginx
+  annotations: {}
+  #!kubernetes.io/ingress.class: nginx
+  #!kubernetes.io/tls-acme: "true"
+  hosts:
+    - domain: ""
+      paths: [ "" ]
+      tlsSecret: ""
+  tls: false
+
+replicaCount: 1
+
+updateStrategy:
+  type: RollingUpdate
+  #! in case libp2pSettings installation is enabled, if needed (persistance is not enabled)
+  #! uncomment bellow to skip updating first N pods
+  #! recommendation is that bootnodes are first N pods in the cluster
+  #!rollingUpdate:
+  #!  partition: 1
+
+#@schema/nullable
+resources: {}
+  #! If you do want to specify resources, uncomment the following
+  #! lines, adjust them as necessary, and remove the curly braces after 'resources:'.
+  #!limits:
+  #!  cpu: 1
+  #!  ephemeral-storage: 1Gi
+  #!  memory: 1Gi
+  #!requests:
+  #!  cpu: 100m
+#!  ephemeral-storage: 128Mi
+#!  memory: 128Mi
+
+persistence:
+  #! This enables PVC config that will create one per pod
+  enabled: false
+  annotations: {}
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  #! Persistent Volume Storage Class
+  #! If defined, storageClassName: <storageClass>
+  #! If set to "-", storageClassName: "", which disables dynamic provisioning
+  #! If undefined (the default) or set to null, no storageClassName spec is set;
+  #! i.e. choosing the default provisioner: gp2 on AWS, standard on GKE, AWS & OpenStack, etc.
+  #@schema/type any=True
+  storageClass: null
+  #! A manually managed Persistent Volume and Claim
+  #! If defined, PVC must be created manually before volume will be bound
+  #@schema/type any=True
+  existingClaim: null
+  #! If needed you can separate statestore and localstore to a different volumes
+  separateStatestore:
+    enabled: false
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    #@schema/type any=True
+    storageClass: null
+    #! In case you are using existingClaim for main volume
+    #! You have to provide existingClaim for separateStatestore is enabled
+    #@schema/type any=True
+    existingClaim: null
+  separateLocalstore:
+    enabled: false
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    #@schema/type any=True
+    storageClass: null
+    #! In case you are using existingClaim for main volume
+    #! You have to provide existingClaim for separateLocalstore is enabled
+    #@schema/type any=True
+    existingClaim: null
+
+#! Enable this if you're using https://github.com/coreos/prometheus-operator
+#! beeConfig.debug_api_enable needs to also be enabled
+serviceMonitor:
+  enabled: false
+  additionalLabels: {}
+  #! Specify a namespace if needed
+  #@schema/type any=True
+  namespace: null
+  #! Fallback to the prometheus default unless specified
+  scrapeInterval: 10s
+  honorLabels: true
+
+podLabels: {}
+
+#@schema/type any=True
+podAnnotations: {}
+  #! Add this annotations if you're using https://github.com/prometheus/prometheus
+  #! and beeConfig.debug_api_enable is enabled
+  #!prometheus.io/scrape: "true"
+#!prometheus.io/port: "1635"
+
+nodeSelector: {}
+
+affinity: {}
+
+tolerations: [ "" ]
+
+#@schema/default ["/bin/bash", "-c", "bee start --config=.bee.yaml || bee deploy --config .bee.yaml"]
+beeCommand: [ "" ]
+
+#! If you prefer setting config options using ENV variables you can set beeEnv
+#! Use same option names as in beeConfig it will be translated to ENV variable format: api_addr -> BEE_API_ADDR
+#! You can specify all options except for usePasswordFile, existingSecret and existingSecretPasswordKey
+beeEnv:
+  api_addr: :1633
+  debug_api_addr: :1635
+  p2p_addr: :1634
+
+#! If enabled, configures pods with defined libp2p keys
+#! Libp2p keys are pregenerated examples and can be replaced with other values
+#! pods without specified key will autogenerate it during start
+libp2pSettings:
+  enabled: true
+  #@schema/type any=True
+  libp2pKeys:
+  #! bee-0: '{"address":"c2552a785c91ef5f13b9c3bbf646dbe4d70c6865","crypto":{"cipher":"aes-128-ctr","ciphertext":"5ddc17d747604015a1468846bf2133eae3748957517452b69a9baa24f81aa076","cipherparams":{"iv":"47a11c7a2c2c4dbc862e2b11b3d67a7f"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"211da3f6da863824995b84ba1c36681a026ef77b4070dc313769750f0d6b9694"},"mac":"41047b4b86b0a6ba486b79c1bb045ed7c491b8a0be1c9dbec1d53bb535c5395e"},"id":"6415e125-84ea-4679-8446-eb59c771b1c1","version":3}'
+  password: ''
+
+#! If enabled, configures pods with defined swarm keys
+#! Swarm keys are pregenerated examples and can be replaced with other values
+#! Pods without specified key will autogenerate it during start
+swarmSettings:
+  enabled: true
+  #@schema/type any=True
+  swarmKeys:
+  #! bee-0: '{"address":"d5803157edd178b35f2d1cb7ee6bb2076c9d928f","crypto":{"cipher":"aes-128-ctr","ciphertext":"0965084761c548fe6dee97942b9d28b583394a9635849d309732210fbf0e689a","cipherparams":{"iv":"6baeecbacc7e38d9bdf9bf441c57a695"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"10313018af7b2862908f17deaf3b083a018f32dbf648eaab5c3cf55d5c6dedb2"},"mac":"a0d8470a13c4ff330138659d201159934cf41a5103e3a2893ed5d4015b7a3fdf"},"id":"92d79b72-0f12-4968-8a12-ab9eeec69e2f","version":3}'
+  password: ''
+
+#! If enabled it will start clef sidecar container that will auto approve every request
+#! Clef keys are pregenerated examples and can be replaced with other values
+clefSettings:
+  enabled: true
+  #@schema/type any=True
+  clefKeys:
+  #! bee-0: '{"address":"e9b904f7cdd3866acdd6216f14a3b54ebf8207ca","crypto":{"cipher":"aes-128-ctr","ciphertext":"92b7ca800bb2baf4434a7295bc224de43fb124724b83d1a5b02b2de53564ea4b","cipherparams":{"iv":"5478d23152284cfb2c74b8b1fb54ce03"},"kdf":"scrypt","kdfparams":{"dklen":32,"n":262144,"p":1,"r":8,"salt":"4c4fb3c1d2b4a35378208ab5fd84a03433dd1ebe6ef93ea68aed082ea6c875ed"},"mac":"caa6ece083de479839d3a847adab01e005ea570705c76a1e474bd360d6c54a6d"},"id":"07eb4e0d-68ed-4259-953f-2c2c068b1127","version":3}'
+  chainId: 5
+  #! Password for decrypting key (please change it for production deployments)
+  password: ''

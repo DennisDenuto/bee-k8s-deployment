@@ -1,0 +1,4 @@
+#@ load("@ytt:data", "data")
+#@ load("funcs.star", "map_to_dashes")
+
+--- #@ map_to_dashes(data.values.beeConfig)

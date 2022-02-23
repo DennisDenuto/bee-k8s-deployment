@@ -1,0 +1,7 @@
+#@ load("@ytt:template", "template")
+#@ load("@ytt:library", "library")
+
+#@ bee = library.get("bee")
+---
+.bee.yaml:
+  _: #@ template.replace(bee.eval()[0])
