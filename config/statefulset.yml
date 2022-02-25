@@ -1,0 +1,235 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:template", "template")
+#@ load("@ytt:library", "library")
+
+#@ bee = library.get("bee")
+#@ beeConfig = bee.data_values()
+
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: bees
+  namespace: #@ data.values.namespace
+  labels:
+    app: bee
+spec:
+  serviceName: bee-headless
+  podManagementPolicy: #@ data.values.podManagementPolicy
+  replicas: #@ data.values.replicaCount
+  updateStrategy: #@ data.values.updateStrategy
+  selector:
+    matchLabels:
+      app: bee
+  template:
+    metadata:
+      labels:
+        app: bee
+      #@ if/end data.values.singlePodSts.enabled:
+      labelFilter: #@ data.values.singlePodSts.labelFilter
+      annotations: #@ data.values.podAnnotations
+    spec:
+      serviceAccountName: #@ data.values.serviceAccount.name
+      #! Bee process inside container is run with gid/uid 999
+      #! fsGroup=999 enables mounting external volumes with appropriate permissions
+      securityContext:
+        fsGroup: 999
+
+      #@ if data.values.libp2pSettings.enabled or data.values.p2pFixedPort.enabled or data.values.swarmSettings.enabled or data.values.clefSettings.enabled:
+      initContainers:
+        #@ if data.values.libp2pSettings.enabled:
+        - name: init-libp2p
+          image: ethersphere/busybox:1.33
+          command:
+            - sh
+            - -c
+            - >
+              export INDEX=$(echo $(hostname) | cut -d'-' -f2-);
+              mkdir -p /home/bee/.bee/keys;
+              chown -R 999:999 /home/bee/.bee/keys;
+              export KEY=$(cat /tmp/bee/libp2p.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//");
+              if [ -z "${KEY}" ]; then exit 0; fi;
+              printf '%s' "${KEY}" > /home/bee/.bee/keys/libp2p.key;
+              echo 'node initialization done';
+          volumeMounts:
+            - name: data
+              mountPath: /home/bee/.bee
+            - name: bee-libp2p
+              mountPath: /tmp/bee
+        #@ end
+        #@ if data.values.swarmSettings.enabled:
+        - name: init-swarm
+          image: ethersphere/busybox:1.33
+          command:
+            - sh
+            - -c
+            - >
+              export INDEX=$(echo $(hostname) | cut -d'-' -f2-);
+              mkdir -p /home/bee/.bee/keys;
+              chown -R 999:999 /home/bee/.bee/keys;
+              export KEY=$(cat /tmp/bee/swarm.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//");
+              if [ -z "${KEY}" ]; then exit 0; fi;
+              printf '%s' "${KEY}" > /home/bee/.bee/keys/swarm.key;
+              echo 'node initialization done';
+          volumeMounts:
+            - name: data
+              mountPath: /home/bee/.bee
+            - name: bee-swarm
+              mountPath: /tmp/bee
+        #@ end
+        #@ if data.values.clefSettings.enabled:
+        - name: init-clef
+          image: ethersphere/clef:0.6.0
+          command:
+            - sh
+            - -c
+            - >
+              export INDEX=$(echo $(hostname) | cut -d'-' -f2-);
+              mkdir -p /app/data/keystore;
+              chown -R nobody:nogroup /app/data/keystore;
+              export KEY=$(cat /tmp/bee/clef.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//");
+              if [ -n "${KEY}" ]; then printf '%s' "${KEY}" > /app/data/keystore/clef.key; fi;
+              /entrypoint.sh init;
+              echo 'clef initialization done';
+          volumeMounts:
+            - name: clef
+              mountPath: /app/data
+            - name: bee-clef
+              mountPath: /tmp/bee
+            #@ if data.values.clefSettings.password:
+            - name: clef-secret
+              mountPath: /app/data/password
+              subPath: password
+              readOnly: true
+            #@ end
+        #@ end
+      #@ end
+      containers:
+        - name: bee
+          image: #@ "{}:{}".format(data.values.image.repository, data.values.image.tag)
+          imagePullPolicy: #@ data.values.image.pullPolicy
+          command: ["/bin/bash", "-c", "bee start --config=.bee.yaml"]
+          ports:
+            - containerPort: #@ int(beeConfig.beeConfig.api_addr.split(":")[1])
+              name: api
+              protocol: TCP
+            - containerPort: #@ int(beeConfig.beeConfig.p2p_addr.split(":")[1])
+              name: p2p
+              protocol: TCP
+          #@ if beeConfig.beeConfig.debug_api_enable:
+            - containerPort: #@ int(beeConfig.beeConfig.debug_api_addr.split(":")[1])
+              name: debug
+              protocol: TCP
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: debug
+            initialDelaySeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /readiness
+              port: debug
+            initialDelaySeconds: 20
+          #@ else:
+          livenessProbe:
+            httpGet:
+              path: /
+              port: api
+            initialDelaySeconds: 20
+          readinessProbe:
+            httpGet:
+              path: /
+              port: api
+            initialDelaySeconds: 20
+          #@ end
+          resources:
+            limits:
+              cpu: 1
+              ephemeral-storage: 1Gi
+              memory: 1Gi
+            requests:
+              cpu: 100m
+            ephemeral-storage: 128Mi
+            memory: 128Mi
+          securityContext:
+            capabilities:
+              drop:
+              - ALL
+            readOnlyRootFilesystem: true
+            runAsNonRoot: true
+            runAsUser: 999
+          volumeMounts:
+            - name: config
+              mountPath: /home/bee/.bee.yaml
+              readOnly: true
+              subPath: .bee.yaml
+            - name: data
+              mountPath: /home/bee/.bee
+        #@ if data.values.clefSettings.enabled:
+        - name: clef
+          image: ethersphere/clef:0.6.0
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: CLEF_CHAINID
+              value: #@ data.values.clefSettings.chainId
+          command:
+            - /entrypoint.sh
+            - run
+          ports:
+            - containerPort: 8550
+              name: api
+              protocol: TCP
+          volumeMounts:
+            - name: clef
+              mountPath: /app/data
+              readOnly: false
+            #@ if data.values.clefSettings.password != '':
+            - name: clef-secret
+              mountPath: /app/data/password
+              subPath: password
+              readOnly: true
+            #@ end
+          #@ end
+      volumes:
+        - name: config-file
+          emptyDir: {}
+        - name: config
+          configMap:
+            name: bee-configmap
+        #@ if data.values.libp2pSettings.enabled:
+        - name: bee-libp2p
+          secret:
+            secretName: bee-libp2p-secret
+            items:
+              - key: libp2pKeys
+                path: libp2p.map
+        #@ end
+        #@ if data.values.swarmSettings.enabled:
+        - name: bee-swarm
+          secret:
+            secretName: bee-swarm-secret
+            items:
+              - key: swarmKeys
+                path: swarm.map
+        #@ end
+        #@ if data.values.clefSettings.enabled:
+        - name: clef
+          emptyDir: {}
+        - name: bee-clef
+          secret:
+            secretName: bee-clef-secret
+            items:
+              - key: clefKeys
+                path: clef.map
+        #@ end
+        #@ if data.values.clefSettings.password != '':
+        - name: clef-secret
+          secret:
+            secretName: bee-clefpassword-secret
+            items:
+              - key: password
+                path: password
+        #@ end
+        - name: data
+          emptyDir: {}
+

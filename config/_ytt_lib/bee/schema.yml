@@ -47,8 +47,6 @@ beeConfig:
   #! If not set, it will be automatically generated
   #! required to be provided
   password: ''
-  #! Path to a file that contains password for decrypting keys is /home/bee/.secret/password
-  usePasswordFile: false
   #! percentage below the peers payment threshold when we initiate settlement
   payment_early_percent: 50
   #! Threshold in BZZ where you expect to get paid from your peers

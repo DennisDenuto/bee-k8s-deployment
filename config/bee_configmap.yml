@@ -1,0 +1,16 @@
+#@ load("@ytt:data", "data")
+#@ load("@ytt:yaml", "yaml")
+#@ load("@ytt:template", "template")
+#@ load("@ytt:library", "library")
+
+#@ bee = library.get("bee")
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: bee-configmap
+  namespace: #@ data.values.namespace
+data:
+  #@yaml/text-templated-strings
+  .bee.yaml: |
+    (@= yaml.encode(bee.eval()[0])@)
