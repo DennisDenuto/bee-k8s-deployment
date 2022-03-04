@@ -24,6 +24,7 @@ spec:
   template:
     metadata:
       labels:
+        app.kubernetes.io/name: bee
         app: bee
       #@ if/end data.values.singlePodSts.enabled:
       labelFilter: #@ data.values.singlePodSts.labelFilter
@@ -47,7 +48,7 @@ spec:
               export INDEX=$(echo $(hostname) | cut -d'-' -f2-);
               mkdir -p /home/bee/.bee/keys;
               chown -R 999:999 /home/bee/.bee/keys;
-              export KEY=$(cat /tmp/bee/libp2p.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//");
+              export KEY=$(cat /tmp/bee/libp2p.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//g");
               if [ -z "${KEY}" ]; then exit 0; fi;
               printf '%s' "${KEY}" > /home/bee/.bee/keys/libp2p.key;
               echo 'node initialization done';
@@ -67,7 +68,7 @@ spec:
               export INDEX=$(echo $(hostname) | cut -d'-' -f2-);
               mkdir -p /home/bee/.bee/keys;
               chown -R 999:999 /home/bee/.bee/keys;
-              export KEY=$(cat /tmp/bee/swarm.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//");
+              export KEY=$(cat /tmp/bee/swarm.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//g");
               if [ -z "${KEY}" ]; then exit 0; fi;
               printf '%s' "${KEY}" > /home/bee/.bee/keys/swarm.key;
               echo 'node initialization done';
@@ -79,7 +80,7 @@ spec:
         #@ end
         #@ if data.values.clefSettings.enabled:
         - name: init-clef
-          image: ethersphere/clef:0.6.0
+          image: ethersphere/clef:0.10.0
           command:
             - sh
             - -c
@@ -87,7 +88,7 @@ spec:
               export INDEX=$(echo $(hostname) | cut -d'-' -f2-);
               mkdir -p /app/data/keystore;
               chown -R nobody:nogroup /app/data/keystore;
-              export KEY=$(cat /tmp/bee/clef.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//");
+              export KEY=$(cat /tmp/bee/clef.map | grep bee-${INDEX}: | cut -d' ' -f2 | sed "s/'//g");
               if [ -n "${KEY}" ]; then printf '%s' "${KEY}" > /app/data/keystore/clef.key; fi;
               /entrypoint.sh init;
               echo 'clef initialization done';
@@ -165,6 +166,8 @@ spec:
               subPath: .bee.yaml
             - name: data
               mountPath: /home/bee/.bee
+            - name: statestore
+              mountPath: /home/bee/.bee/statestore
         #@ if data.values.clefSettings.enabled:
         - name: clef
           image: ethersphere/clef:0.6.0
@@ -232,4 +235,11 @@ spec:
         #@ end
         - name: data
           emptyDir: {}
-
+  volumeClaimTemplates:
+    - metadata:
+        name: statestore
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 30Gi

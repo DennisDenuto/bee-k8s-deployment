@@ -1,0 +1,20 @@
+#@ load("@ytt:data", "data")
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: bee-service-p2p
+  namespace: #@ data.values.namespace
+  labels:
+    endpoint: p2p
+spec:
+  type: NodePort
+  externalTrafficPolicy: Local
+  ports:
+    - name: p2p
+      port: 1634
+      protocol: TCP
+      targetPort: p2p
+  selector:
+    app: bee
+    statefulset.kubernetes.io/pod-name: bee
