@@ -17,4 +17,3 @@ spec:
       targetPort: p2p
   selector:
     app: bee
-    statefulset.kubernetes.io/pod-name: bee

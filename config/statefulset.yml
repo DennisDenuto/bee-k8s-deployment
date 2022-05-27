@@ -36,8 +36,37 @@ spec:
       securityContext:
         fsGroup: 999
 
-      #@ if data.values.libp2pSettings.enabled or data.values.p2pFixedPort.enabled or data.values.swarmSettings.enabled or data.values.clefSettings.enabled:
       initContainers:
+        - name: init-natport
+          image: ethersphere/busybox:1.33
+          command:
+            - sh
+            - -c
+            - >
+              # Point to the internal API server hostname
+              APISERVER=https://kubernetes.default.svc;
+              # Path to ServiceAccount token
+              SERVICEACCOUNT=/var/run/secrets/kubernetes.io/serviceaccount;
+              # Read this Pod's namespace
+              NAMESPACE=$(cat ${SERVICEACCOUNT}/namespace);
+              # Read the ServiceAccount bearer token
+              TOKEN=$(cat ${SERVICEACCOUNT}/token);
+              # Reference the internal certificate authority (CA)
+              CACERT=${SERVICEACCOUNT}/ca.crt;
+              SERVICE='bee-public';
+              # Explore the API with TOKEN
+              curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/namespaces/$NAMESPACE/services/$SERVICE/ 2>/dev/null| jq -r '.status | .loadBalancer | .ingress | .[] | .ip' || exit 1;
+              PUBLIC_IP=$(curl --cacert ${CACERT} --header "Authorization: Bearer ${TOKEN}" -X GET ${APISERVER}/api/v1/namespaces/$NAMESPACE/services/$SERVICE/ 2>/dev/null| jq -r '.status | .loadBalancer | .ingress | .[] | .ip');
+
+              cp -p /tmp/.bee.yaml /home/bee/.bee.yaml;
+              printf 'nat-addr: %s:%s\n' "${PUBLIC_IP}" "1634" >> /home/bee/.bee.yaml;
+              echo 'node initialization done';
+          volumeMounts:
+            - name: config-file
+              mountPath: /home/bee
+            - name: config
+              mountPath: /tmp/.bee.yaml
+              subPath: .bee.yaml
         #@ if data.values.libp2pSettings.enabled:
         - name: init-libp2p
           image: ethersphere/busybox:1.33
@@ -104,7 +133,6 @@ spec:
               readOnly: true
             #@ end
         #@ end
-      #@ end
       containers:
         - name: bee
           image: #@ "{}:{}".format(data.values.image.repository, data.values.image.tag)

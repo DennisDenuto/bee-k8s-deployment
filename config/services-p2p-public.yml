@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    endpoint: p2p
+  name: bee-public
+  namespace: bee
+spec:
+  externalTrafficPolicy: Cluster
+  ipFamilies:
+    - IPv4
+  ipFamilyPolicy: SingleStack
+  ports:
+    - nodePort: 30675
+      port: 1634
+      protocol: TCP
+      targetPort: 1634
+  selector:
+    app: bee
+  sessionAffinity: None
+  type: LoadBalancer

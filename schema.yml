@@ -5,7 +5,7 @@ namespace: bee
 
 image:
   repository: ethersphere/bee
-  tag: 1.4.3
+  tag: 1.6.0
   pullPolicy: IfNotPresent
 
 serviceAccount:
