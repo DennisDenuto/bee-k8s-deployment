@@ -1,0 +1,48 @@
+---
+apiVersion: imgpkg.carvel.dev/v1alpha1
+images:
+- annotations:
+    kbld.carvel.dev/id: ethersphere/bee:1.6.0
+    kbld.carvel.dev/origins: |
+      - resolved:
+          tag: 1.6.0
+          url: ethersphere/bee:1.6.0
+      - preresolved:
+          url: index.docker.io/ethersphere/bee@sha256:eadc881a0728d3b2771e06f04e51c362d895d37c1ad84d3af90109905311a628
+      - preresolved:
+          url: index.docker.io/ethersphere/bee@sha256:eadc881a0728d3b2771e06f04e51c362d895d37c1ad84d3af90109905311a628
+  image: index.docker.io/ethersphere/bee@sha256:eadc881a0728d3b2771e06f04e51c362d895d37c1ad84d3af90109905311a628
+- annotations:
+    kbld.carvel.dev/id: ethersphere/busybox:1.33
+    kbld.carvel.dev/origins: |
+      - resolved:
+          tag: "1.33"
+          url: ethersphere/busybox:1.33
+      - preresolved:
+          url: index.docker.io/ethersphere/busybox@sha256:4fd7b9462c21b36d48f0fc853a98cce91d15befba8fdd1363e880bcbb4cabb1b
+      - preresolved:
+          url: index.docker.io/ethersphere/busybox@sha256:4fd7b9462c21b36d48f0fc853a98cce91d15befba8fdd1363e880bcbb4cabb1b
+  image: index.docker.io/ethersphere/busybox@sha256:4fd7b9462c21b36d48f0fc853a98cce91d15befba8fdd1363e880bcbb4cabb1b
+- annotations:
+    kbld.carvel.dev/id: ethersphere/clef:0.10.0
+    kbld.carvel.dev/origins: |
+      - resolved:
+          tag: 0.10.0
+          url: ethersphere/clef:0.10.0
+      - preresolved:
+          url: index.docker.io/ethersphere/clef@sha256:9991eefd378ebe4a6beac4b9a257c5f6ec108cdc864753d147a1e7c8f4f7d45e
+      - preresolved:
+          url: index.docker.io/ethersphere/clef@sha256:9991eefd378ebe4a6beac4b9a257c5f6ec108cdc864753d147a1e7c8f4f7d45e
+  image: index.docker.io/ethersphere/clef@sha256:9991eefd378ebe4a6beac4b9a257c5f6ec108cdc864753d147a1e7c8f4f7d45e
+- annotations:
+    kbld.carvel.dev/id: ethersphere/clef:0.6.0
+    kbld.carvel.dev/origins: |
+      - resolved:
+          tag: 0.6.0
+          url: ethersphere/clef:0.6.0
+      - preresolved:
+          url: index.docker.io/ethersphere/clef@sha256:1f0d8fa56b7080bb7d12a8c755108b02bf845b5a3d4456085b9e1195dbdea139
+      - preresolved:
+          url: index.docker.io/ethersphere/clef@sha256:1f0d8fa56b7080bb7d12a8c755108b02bf845b5a3d4456085b9e1195dbdea139
+  image: index.docker.io/ethersphere/clef@sha256:1f0d8fa56b7080bb7d12a8c755108b02bf845b5a3d4456085b9e1195dbdea139
+kind: ImagesLock

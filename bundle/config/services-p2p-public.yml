@@ -1,10 +1,12 @@
+#@ load("@ytt:data", "data")
+---
 apiVersion: v1
 kind: Service
 metadata:
   labels:
     endpoint: p2p
   name: bee-public
-  namespace: bee
+  namespace: #@ data.values.namespace
 spec:
   externalTrafficPolicy: Cluster
   ipFamilies:

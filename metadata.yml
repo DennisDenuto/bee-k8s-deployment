@@ -1,0 +1,6 @@
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: PackageMetadata
+metadata:
+  name: bee.com.github.dennisdenuto
+spec:
+  displayName: "Bee"

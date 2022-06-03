@@ -1,0 +1,158 @@
+#@ load("@ytt:data", "data")
+
+apiVersion: data.packaging.carvel.dev/v1alpha1
+kind: Package
+metadata:
+  name: #@ "bee.com.github.dennisdenuto.{}".format(data.values.packageVersion)
+spec:
+  refName: bee.com.github.dennisdenuto
+  version: #@ data.values.packageVersion
+  releaseNotes: |
+    Initial release of bee
+  template:
+    spec:
+      fetch:
+        - imgpkgBundle:
+            image: #@ data.values.packageBundle
+      template:
+        - ytt:
+            paths:
+              - config/
+              - values.yml
+        - kbld:
+            paths:
+              - .imgpkg/images.yml
+              - '-'
+      deploy:
+        - kapp: {}
+  valuesSchema:
+    openAPIv3:
+      title: bee.com.github.dennisdenuto values schema
+      properties:
+        create_namespace:
+          type: boolean
+          default: true
+        namespace:
+          type: string
+          default: bee
+        image:
+          type: object
+          additionalProperties: false
+          properties:
+            repository:
+              type: string
+              default: ethersphere/bee
+            tag:
+              type: string
+              default: 1.6.0
+            pullPolicy:
+              type: string
+              default: IfNotPresent
+        serviceAccount:
+          type: object
+          additionalProperties: false
+          properties:
+            create:
+              type: boolean
+              default: true
+            name:
+              type: string
+              default: default-service-account
+        podManagementPolicy:
+          type: string
+          default: OrderedReady
+        service:
+          type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              default: ClusterIP
+            port:
+              type: integer
+              default: 80
+        singlePodSts:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              type: boolean
+              default: false
+            labelFilter:
+              type: string
+              default: queen-bee
+        replicaCount:
+          type: integer
+          default: 1
+        updateStrategy:
+          type: object
+          additionalProperties: false
+          properties:
+            type:
+              type: string
+              default: RollingUpdate
+        serviceMonitor:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              type: boolean
+              default: false
+            additionalLabels:
+              type: object
+              additionalProperties: false
+              properties: { }
+            namespace:
+              nullable: true
+              default: null
+            scrapeInterval:
+              type: string
+              default: 10s
+            honorLabels:
+              type: boolean
+              default: true
+        podAnnotations:
+          nullable: true
+          default: { }
+        libp2pSettings:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              type: boolean
+              default: true
+            libp2pKeys:
+              nullable: true
+              default: null
+            password:
+              type: string
+              default: ""
+        swarmSettings:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              type: boolean
+              default: true
+            swarmKeys:
+              nullable: true
+              default: null
+            password:
+              type: string
+              default: ""
+        clefSettings:
+          type: object
+          additionalProperties: false
+          properties:
+            enabled:
+              type: boolean
+              default: true
+            clefKeys:
+              nullable: true
+              default: null
+            chainId:
+              type: string
+              default: "5"
+            password:
+              type: string
+              default: ""
